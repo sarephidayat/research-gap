@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gap Analysis — Chatbot Akademik Berbasis RAG</title>
+<style>
+  :root{
+    --bg:#f4f6fb;
+    --surface:#ffffff;
+    --text:#1c2230;
+    --muted:#68708a;
+    --line:#e5e8f2;
+    --p1:#4f46e5; --p1-soft:#eef2ff;
+    --p2:#0d9488; --p2-soft:#ecfdf5;
+    --p3:#d97706; --p3-soft:#fff7ed;
+    --radius:16px;
+    --shadow:0 12px 32px rgba(20,26,50,.07);
+    --shadow-sm:0 4px 14px rgba(20,26,50,.06);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1220px;margin:0 auto;padding:0 20px;}
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative;
+    overflow:hidden;
+    background:radial-gradient(1200px 500px at 15% -10%,#3b2fbf 0%,transparent 55%),
+               radial-gradient(900px 500px at 95% 0%,#0d9488 0%,transparent 50%),
+               linear-gradient(135deg,#191d3a 0%,#232a52 55%,#1b2145 100%);
+    color:#fff;
+    padding:64px 0 56px;
+  }
+  .hero::after{
+    content:"";
+    position:absolute;inset:0;
+    background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);
+    background-size:44px 44px;
+    mask-image:radial-gradient(700px 400px at 30% 0%,#000,transparent 75%);
+    -webkit-mask-image:radial-gradient(700px 400px at 30% 0%,#000,transparent 75%);
+    pointer-events:none;
+  }
+  .hero .wrap{position:relative;z-index:1;}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:8px;
+    font-size:.74rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+    color:#c7cdfb;background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.16);
+    padding:6px 14px;border-radius:999px;
+  }
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:#34d399;box-shadow:0 0 12px #34d399;}
+  .hero h1{
+    margin:20px 0 12px;font-size:clamp(1.6rem,3.4vw,2.5rem);
+    line-height:1.2;letter-spacing:-.02em;max-width:900px;font-weight:800;
+  }
+  .hero p{margin:0;max-width:760px;color:#b9c0e0;font-size:1rem;}
+
+  /* ---------- LEGEND CARDS ---------- */
+  .legend{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:18px;
+    margin-top:-34px;position:relative;z-index:2;
+  }
+  .paper{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:20px 20px 18px;position:relative;overflow:hidden;
+  }
+  .paper::before{content:"";position:absolute;top:0;left:0;right:0;height:5px;}
+  .paper.p1::before{background:var(--p1);}
+  .paper.p2::before{background:var(--p2);}
+  .paper.p3::before{background:var(--p3);}
+  .paper-tag{
+    display:inline-block;font-size:.68rem;font-weight:800;letter-spacing:.1em;
+    text-transform:uppercase;padding:4px 10px;border-radius:999px;margin-bottom:10px;
+  }
+  .p1 .paper-tag{color:var(--p1);background:var(--p1-soft);}
+  .p2 .paper-tag{color:var(--p2);background:var(--p2-soft);}
+  .p3 .paper-tag{color:var(--p3);background:var(--p3-soft);}
+  .paper h2{margin:0 0 6px;font-size:1.02rem;line-height:1.4;font-weight:700;}
+  .paper .inst{color:var(--muted);font-size:.85rem;margin:0 0 14px;font-weight:600;}
+  .stats{display:flex;flex-wrap:wrap;gap:8px;}
+  .chip{
+    font-size:.78rem;font-weight:700;padding:5px 11px;border-radius:8px;
+    background:#f1f3fa;color:#3a4463;border:1px solid #e4e8f5;
+  }
+  .chip b{color:var(--p1);}
+  .p2 .chip b{color:var(--p2);}
+  .p3 .chip b{color:var(--p3);}
+
+  /* ---------- TOC ---------- */
+  .toc{
+    position:sticky;top:0;z-index:20;margin:26px 0 30px;
+    background:rgba(244,246,251,.82);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .toc .wrap{display:flex;gap:10px;flex-wrap:wrap;padding-top:12px;padding-bottom:12px;}
+  .toc a{
+    text-decoration:none;color:#3d445e;font-size:.86rem;font-weight:600;
+    padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:#fff;
+    transition:.18s;
+  }
+  .toc a:hover{color:var(--p1);border-color:#c9cffa;box-shadow:var(--shadow-sm);transform:translateY(-1px);}
+
+  /* ---------- ASPECT SECTIONS ---------- */
+  .aspect{margin-bottom:46px;scroll-margin-top:78px;}
+  .aspect-head{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
+  .aspect-head .num{
+    font-size:.8rem;font-weight:800;color:#fff;background:#2b3350;
+    width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex:none;
+  }
+  .aspect-head h2{margin:0;font-size:1.3rem;letter-spacing:-.01em;font-weight:800;}
+  .aspect-head .rule{flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent);}
+
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+  .cell{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow-sm);padding:20px 22px;position:relative;overflow:hidden;
+  }
+  .cell::before{content:"";position:absolute;top:0;left:0;bottom:0;width:4px;}
+  .cell.p1::before{background:var(--p1);}
+  .cell.p2::before{background:var(--p2);}
+  .cell.p3::before{background:var(--p3);}
+  .cell h3{
+    margin:0 0 14px;font-size:.8rem;font-weight:800;letter-spacing:.06em;
+    text-transform:uppercase;display:flex;align-items:center;gap:8px;
+  }
+  .p1 h3{color:var(--p1);}
+  .p2 h3{color:var(--p2);}
+  .p3 h3{color:var(--p3);}
+  .cell h3 .paper-badge{
+    font-size:.68rem;background:#f1f3fa;color:#5b6480;padding:2px 8px;border-radius:6px;
+    letter-spacing:.04em;font-weight:700;
+  }
+  .cell p{margin:0 0 12px;font-size:.9rem;color:#333a4d;}
+  .cell p:last-child{margin-bottom:0;}
+  .cell strong{color:#171d2e;font-weight:700;}
+  .cell ul,.cell ol{margin:0 0 12px;padding-left:1.15rem;font-size:.9rem;color:#333a4d;}
+  .cell ul:last-child,.cell ol:last-child{margin-bottom:0;}
+  .cell li{margin:0 0 7px;}
+  .cell li::marker{color:#9aa2bd;font-weight:600;}
+  .cell ol li::marker{color:var(--p1);font-weight:800;}
+  .p2 ol li::marker,.p2 ul li::marker{color:var(--p2);}
+  .p3 ol li::marker,.p3 ul li::marker{color:var(--p3);}
+
+  .label{
+    display:block;font-size:.72rem;font-weight:800;letter-spacing:.05em;
+    text-transform:uppercase;color:#8a91ab;margin:0 0 4px;
+  }
+  .metric{
+    display:inline-block;font-weight:800;color:#fff;background:#2b3350;
+    padding:1px 7px;border-radius:6px;font-size:.82rem;letter-spacing:.01em;
+  }
+  .p1 .metric{background:var(--p1);}
+  .p2 .metric{background:var(--p2);}
+  .p3 .metric{background:var(--p3);}
+  .quote{
+    display:block;border-left:3px solid #d7dcf0;background:#f7f8fd;
+    padding:8px 12px;border-radius:0 8px 8px 0;font-size:.82rem;color:#4a526b;
+    font-style:italic;margin:0 0 12px;
+  }
+  .arrow{color:#8a91ab;font-weight:700;}
+
+  .empty{
+    font-size:.9rem;color:#8a91ab;font-style:italic;
+    display:flex;align-items:center;gap:8px;
+  }
+  .empty::before{content:"—";font-style:normal;}
+
+  /* ---------- FOOTER ---------- */
+  footer{
+    margin-top:20px;padding:28px 0 46px;border-top:1px solid var(--line);
+    color:var(--muted);font-size:.84rem;
+  }
+  footer b{color:#4a526b;}
+
+  /* ---------- DATA TABLES ---------- */
+  .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);background:var(--surface);}
+  table.data{width:100%;border-collapse:separate;border-spacing:0;min-width:840px;font-size:.88rem;}
+  table.data th,table.data td{padding:14px 16px;text-align:left;vertical-align:top;color:#333a4d;border-bottom:1px solid var(--line);border-right:1px solid var(--line);}
+  table.data th:last-child,table.data td:last-child{border-right:0;}
+  table.data thead th{position:sticky;top:0;z-index:3;background:#232a52;color:#fff;font-size:.75rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;}
+  table.data thead th.c1{background:var(--p1);}
+  table.data thead th.c2{background:var(--p2);}
+  table.data thead th.c3{background:var(--p3);}
+  table.data tbody th{position:sticky;left:0;z-index:2;background:#f4f6fc;font-weight:700;color:#232a52;min-width:170px;}
+  table.data thead th:first-child{left:0;z-index:4;}
+  table.data tbody tr:nth-child(even) td{background:#fafbfe;}
+  table.data tbody tr:hover td{background:#f1f4fc;}
+  table.data tbody tr:last-child th,table.data tbody tr:last-child td{border-bottom:0;}
+  table.data b{color:#171d2e;}
+  table.data ul,table.data ol{margin:0;padding-left:1.1rem;}
+  table.data li{margin:0 0 6px;}
+  table.data li:last-child{margin-bottom:0;}
+
+  .badge{display:inline-block;font-size:.72rem;font-weight:800;padding:3px 10px;border-radius:999px;letter-spacing:.02em;}
+  .badge.vhigh{background:#dcfce7;color:#15803d;}
+  .badge.high{background:#fef3c7;color:#b45309;}
+  .muted-mini{font-size:.74rem;font-weight:600;color:var(--muted);}
+
+  .callout{border-radius:12px;padding:15px 18px;font-size:.9rem;margin:18px 0;border:1px solid;line-height:1.6;}
+  .callout.info{background:#eef2ff;border-color:#c7d2fe;color:#3730a3;}
+  .callout.warn{background:#fff7ed;border-color:#fed7aa;color:#7c2d12;}
+  .callout b{color:inherit;}
+
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px;}
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:20px 22px;}
+  .panel h3{margin:0 0 14px;font-size:1rem;display:flex;align-items:center;gap:10px;}
+  .panel h3 .ic{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:.9rem;font-weight:800;color:#fff;flex:none;}
+  .panel.same h3 .ic{background:var(--p2);}
+  .panel.diff h3 .ic{background:var(--p1);}
+  .panel.opp h3 .ic{background:var(--p3);}
+  .panel.warn h3 .ic{background:#ea580c;}
+  .panel ul{margin:0;padding-left:1.1rem;font-size:.9rem;color:#333a4d;}
+  .panel li{margin:0 0 9px;}
+  .panel li:last-child{margin-bottom:0;}
+
+  .steps{counter-reset:s;list-style:none;padding:0;margin:0;}
+  .steps>li{position:relative;padding:18px 22px 18px 62px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-sm);margin-bottom:16px;font-size:.92rem;color:#333a4d;}
+  .steps>li::before{counter-increment:s;content:counter(s);position:absolute;left:18px;top:17px;width:28px;height:28px;border-radius:8px;background:#232a52;color:#fff;display:grid;place-items:center;font-weight:800;font-size:.82rem;}
+  .steps>li h4{margin:0 0 8px;font-size:1rem;color:#171d2e;}
+  .steps>li ul{margin:8px 0 0;padding-left:1.15rem;}
+  .steps>li li{margin:0 0 8px;}
+  .steps>li li:last-child{margin-bottom:0;}
+  .section-note{font-size:.9rem;color:var(--muted);margin:-6px 0 16px;}
+  .subhead{font-size:.95rem;font-weight:800;color:#232a52;margin:22px 0 12px;display:flex;align-items:center;gap:9px;}
+  .subhead::before{content:"";width:8px;height:8px;border-radius:3px;background:var(--p1);}
+
+  @media (max-width:920px){
+    .legend{grid-template-columns:1fr;}
+    .grid{grid-template-columns:1fr;}
+    .duo{grid-template-columns:1fr;}
+    .hero{padding:48px 0 46px;}
+  }
+</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet">
+
+<!-- ============================================================
+     REDESIGN — SOFT NEO-BRUTALISM
+     Blok ini menimpa (override) seluruh aturan di atas agar
+     tampilan konsisten: mint bg, kartu putih, outline hitam,
+     hard offset shadow, sudut membulat, aksen hijau.
+     ============================================================ -->
+<style>
+  :root{
+    --bg:#DDFBE8;
+    --bg-soft:#CBF6DB;
+    --card:#FFFFFF;
+    --accent:#00D98B;
+    --accent-dark:#00A96C;
+    --accent-soft:#CBF7E5;
+    --ink:#111111;
+    --muted:#555555;
+    --line:#111111;
+    --divider:#A0A0A0;
+    --disabled:#B8F1D5;
+    --radius:18px;
+    --radius-sm:12px;
+    --radius-pill:999px;
+    --shadow:4px 5px 0 #000000;
+    --shadow-sm:3px 3px 0 #000000;
+    --shadow-lg:6px 8px 0 #000000;
+    --p1:#6C4CFF; --p1-soft:#EDE8FF;
+    --p2:#0EA5E9; --p2-soft:#E0F2FE;
+    --p3:#F59E0B; --p3-soft:#FEF3C7;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1240px;margin:0 auto;padding:0 22px;}
+  :focus-visible{outline:3px solid var(--ink);outline-offset:2px;border-radius:8px;}
+
+  /* ---------- HERO ---------- */
+  .hero{
+    background:transparent;
+    color:var(--ink);
+    padding:34px 0 6px;
+    overflow:visible;
+  }
+  .hero .wrap{
+    position:relative;
+    overflow:hidden;
+    z-index:1;
+    background:var(--card);
+    border:3px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow-lg);
+    padding:38px 38px 34px;
+  }
+  .hero .wrap::after{
+    content:"";
+    position:absolute;
+    inset:auto;
+    top:-72px;right:-72px;
+    width:230px;height:230px;
+    background:var(--accent);
+    background-image:none;
+    border:3px solid var(--line);
+    border-radius:50%;
+    mask-image:none;-webkit-mask-image:none;
+    pointer-events:none;
+  }
+  .hero .wrap::before{
+    content:"";
+    position:absolute;
+    left:-46px;bottom:-70px;
+    width:150px;height:150px;
+    background:var(--accent-soft);
+    border:3px solid var(--line);
+    border-radius:32px;
+    transform:rotate(16deg);
+    pointer-events:none;
+  }
+  .eyebrow{
+    position:relative;z-index:2;
+    display:inline-flex;align-items:center;gap:8px;
+    font-size:.72rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink);background:var(--accent);
+    border:2px solid var(--line);border-radius:var(--radius-pill);
+    padding:7px 15px;box-shadow:2px 3px 0 #000;
+  }
+  .eyebrow .dot{width:9px;height:9px;border-radius:50%;background:var(--ink);box-shadow:none;}
+  .hero h1{
+    position:relative;z-index:2;
+    margin:22px 0 12px;max-width:920px;
+    font-size:clamp(1.7rem,3.6vw,2.6rem);line-height:1.14;
+    letter-spacing:-.03em;font-weight:900;color:var(--ink);
+  }
+  .hero p{position:relative;z-index:2;margin:0;max-width:730px;color:var(--muted);font-size:1.02rem;}
+
+  /* ---------- LEGEND / PAPER CARDS ---------- */
+  .legend{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:20px;
+    margin-top:26px;position:relative;z-index:2;
+  }
+  .paper{
+    background:var(--card);border:3px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:26px 22px 20px;position:relative;overflow:hidden;
+    transition:transform .14s ease, box-shadow .14s ease;
+  }
+  .paper:hover{transform:translate(-2px,-2px);box-shadow:7px 9px 0 #000;}
+  .paper::before{content:"";position:absolute;top:0;left:0;right:0;height:11px;border-bottom:3px solid var(--line);}
+  .paper.p1::before{background:var(--p1);}
+  .paper.p2::before{background:var(--p2);}
+  .paper.p3::before{background:var(--p3);}
+  .paper-tag{
+    display:inline-block;font-size:.68rem;font-weight:800;letter-spacing:.1em;
+    text-transform:uppercase;padding:5px 12px;border-radius:var(--radius-pill);
+    margin-bottom:12px;border:2px solid var(--line);color:var(--ink);
+  }
+  .p1 .paper-tag{background:var(--p1-soft);}
+  .p2 .paper-tag{background:var(--p2-soft);}
+  .p3 .paper-tag{background:var(--p3-soft);}
+  .paper h2{margin:0 0 8px;font-size:1.04rem;line-height:1.35;font-weight:800;color:var(--ink);}
+  .paper .inst{color:var(--muted);font-size:.85rem;margin:0 0 16px;font-weight:600;}
+  .stats{display:flex;flex-wrap:wrap;gap:8px;}
+  .chip{
+    font-size:.78rem;font-weight:700;padding:6px 12px;border-radius:var(--radius-pill);
+    background:var(--accent-soft);color:var(--ink);border:2px solid var(--line);
+  }
+  .chip b{font-weight:800;}
+  .p1 .chip b{color:var(--p1);}
+  .p2 .chip b{color:var(--p2);}
+  .p3 .chip b{color:#B9770E;}
+
+  /* ---------- TOC / NAV ---------- */
+  .toc{
+    position:sticky;top:0;z-index:30;margin:30px 0 36px;
+    background:var(--bg);backdrop-filter:none;
+    border-bottom:3px solid var(--line);
+  }
+  .toc .wrap{
+    display:flex;gap:10px;flex-wrap:wrap;padding-top:14px;padding-bottom:14px;
+  }
+  .toc a{
+    text-decoration:none;color:var(--ink);font-size:.84rem;font-weight:700;
+    padding:8px 15px;border-radius:var(--radius-pill);border:2px solid var(--line);
+    background:var(--card);box-shadow:2px 3px 0 #000;white-space:nowrap;
+    transition:transform .12s ease, box-shadow .12s ease, background .12s ease;
+  }
+  .toc a:hover{background:var(--accent);transform:translate(-1px,-1px);box-shadow:3px 4px 0 #000;}
+  .toc a:active{transform:translate(1px,1px);box-shadow:1px 1px 0 #000;}
+
+  /* ---------- ASPECT SECTIONS ---------- */
+  .aspect{margin-bottom:54px;scroll-margin-top:100px;}
+  .aspect-head{display:flex;align-items:center;gap:14px;margin-bottom:20px;}
+  .aspect-head .num{
+    font-size:.82rem;font-weight:900;color:var(--ink);background:var(--accent);
+    width:38px;height:38px;border-radius:11px;display:grid;place-items:center;flex:none;
+    border:2px solid var(--line);box-shadow:2px 3px 0 #000;
+  }
+  .aspect-head h2{margin:0;font-size:1.35rem;letter-spacing:-.02em;font-weight:900;color:var(--ink);}
+  .aspect-head .rule{
+    flex:1;height:4px;border-radius:2px;
+    background:repeating-linear-gradient(90deg,var(--ink) 0 12px,transparent 12px 22px);
+    opacity:.75;
+  }
+
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:start;}
+  .cell{
+    background:var(--card);border:3px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:26px 22px 20px;position:relative;overflow:hidden;
+  }
+  .cell::before{content:"";position:absolute;top:0;left:0;right:0;height:10px;border-bottom:3px solid var(--line);}
+  .cell.p1::before{background:var(--p1);}
+  .cell.p2::before{background:var(--p2);}
+  .cell.p3::before{background:var(--p3);}
+  .cell h3{
+    margin:6px 0 16px;font-size:.82rem;font-weight:900;letter-spacing:.06em;
+    text-transform:uppercase;display:flex;align-items:center;gap:8px;
+  }
+  .p1 h3{color:var(--p1);}
+  .p2 h3{color:var(--p2);}
+  .p3 h3{color:#B9770E;}
+  .cell h3 .paper-badge{
+    font-size:.68rem;background:var(--accent);color:var(--ink);padding:3px 10px;
+    border-radius:var(--radius-pill);letter-spacing:.04em;font-weight:800;border:2px solid var(--line);
+  }
+  .cell p{margin:0 0 13px;font-size:.9rem;color:var(--muted);}
+  .cell p:last-child{margin-bottom:0;}
+  .cell strong{color:var(--ink);font-weight:800;}
+  .cell ul,.cell ol{margin:0 0 13px;padding-left:1.25rem;font-size:.9rem;color:var(--muted);}
+  .cell ul:last-child,.cell ol:last-child{margin-bottom:0;}
+  .cell li{margin:0 0 7px;}
+  .cell ul li::marker{color:var(--accent-dark);}
+  .cell ol li::marker{color:var(--ink);font-weight:900;}
+
+  .label{
+    display:block;font-size:.71rem;font-weight:900;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--accent-dark);margin:0 0 5px;
+  }
+  .metric{
+    display:inline-block;font-weight:800;color:var(--ink);background:var(--accent);
+    border:2px solid var(--line);border-radius:8px;padding:1px 8px;font-size:.83rem;
+    box-shadow:1px 2px 0 #000;
+  }
+  .quote{
+    display:block;border-left:4px solid var(--line);background:var(--accent-soft);
+    padding:9px 13px;border-radius:0 10px 10px 0;font-size:.82rem;color:var(--ink);
+    font-style:italic;margin:0 0 13px;
+  }
+  .arrow{color:var(--accent-dark);font-weight:900;}
+
+  .empty{font-size:.9rem;color:var(--muted);font-style:italic;display:flex;align-items:center;gap:8px;}
+  .empty::before{content:"—";font-style:normal;}
+
+  /* ---------- FOOTER ---------- */
+  footer{
+    margin-top:10px;padding:26px 0 54px;border-top:3px solid var(--line);
+    color:var(--muted);font-size:.86rem;
+  }
+  footer b{color:var(--ink);}
+
+  /* ---------- DATA TABLES ---------- */
+  .table-wrap{
+    overflow-x:auto;background:var(--card);border:3px solid var(--line);
+    border-radius:var(--radius);box-shadow:var(--shadow);
+  }
+  table.data{width:100%;border-collapse:separate;border-spacing:0;min-width:840px;font-size:.88rem;}
+  table.data th,table.data td{
+    padding:15px 16px;text-align:left;vertical-align:top;color:var(--muted);
+    border-bottom:1.5px solid var(--divider);border-right:1.5px solid var(--divider);
+  }
+  table.data th:last-child,table.data td:last-child{border-right:0;}
+  table.data thead th{
+    position:sticky;top:0;z-index:3;background:var(--ink);color:#fff;
+    font-size:.74rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+    border-bottom:3px solid var(--line);
+  }
+  table.data thead th.c1{background:var(--p1);color:#fff;}
+  table.data thead th.c2{background:var(--p2);color:#111;}
+  table.data thead th.c3{background:var(--p3);color:#111;}
+  table.data tbody th{
+    position:sticky;left:0;z-index:2;background:var(--accent-soft);
+    font-weight:800;color:var(--ink);min-width:175px;border-right:1.5px solid var(--line);
+  }
+  table.data thead th:first-child{left:0;z-index:4;}
+  table.data tbody tr:nth-child(even) td{background:#F5FFFA;}
+  table.data tbody tr:hover td{background:var(--accent-soft);}
+  table.data tbody tr:last-child th,table.data tbody tr:last-child td{border-bottom:0;}
+  table.data b{color:var(--ink);font-weight:800;}
+  table.data ul,table.data ol{margin:0;padding-left:1.15rem;}
+  table.data li{margin:0 0 6px;}
+  table.data li:last-child{margin-bottom:0;}
+  table.data ul li::marker{color:var(--accent-dark);}
+  table.data ol li::marker{color:var(--ink);font-weight:900;}
+
+  .badge{
+    display:inline-block;font-size:.72rem;font-weight:800;padding:4px 11px;
+    border-radius:var(--radius-pill);letter-spacing:.02em;border:2px solid var(--line);
+  }
+  .badge.vhigh{background:var(--accent);color:var(--ink);}
+  .badge.high{background:#FFD84D;color:var(--ink);}
+  .muted-mini{font-size:.74rem;font-weight:600;color:var(--muted);}
+
+  /* ---------- CALLOUTS ---------- */
+  .callout{
+    border:3px solid var(--line);border-radius:var(--radius-sm);padding:16px 18px;
+    font-size:.9rem;margin:20px 0;line-height:1.6;box-shadow:var(--shadow-sm);
+  }
+  .callout.info{background:var(--accent-soft);color:var(--ink);}
+  .callout.warn{background:#FFF3C4;color:var(--ink);}
+  .callout b{color:inherit;}
+
+  /* ---------- DUO / PANELS ---------- */
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px;align-items:start;}
+  .panel{
+    background:var(--card);border:3px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:22px 22px 20px;
+  }
+  .panel h3{margin:0 0 16px;font-size:1rem;display:flex;align-items:center;gap:10px;font-weight:800;color:var(--ink);}
+  .panel h3 .ic{
+    width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
+    font-size:.9rem;font-weight:900;color:#fff;flex:none;border:2px solid var(--line);
+  }
+  .panel.same h3 .ic{background:var(--p2);color:#111;}
+  .panel.diff h3 .ic{background:var(--p1);}
+  .panel.opp h3 .ic{background:var(--p3);color:#111;}
+  .panel.warn h3 .ic{background:#EA580C;}
+  .panel ul{margin:0;padding-left:1.25rem;font-size:.9rem;color:var(--muted);}
+  .panel li{margin:0 0 9px;}
+  .panel li:last-child{margin-bottom:0;}
+  .panel ul li::marker{color:var(--accent-dark);}
+
+  /* ---------- STEPS ---------- */
+  .steps{counter-reset:s;list-style:none;padding:0;margin:0;}
+  .steps>li{
+    position:relative;padding:20px 22px 20px 70px;background:var(--card);
+    border:3px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);
+    margin-bottom:18px;font-size:.92rem;color:var(--muted);
+  }
+  .steps>li::before{
+    counter-increment:s;content:counter(s);position:absolute;left:18px;top:18px;
+    width:34px;height:34px;border-radius:10px;background:var(--accent);color:var(--ink);
+    display:grid;place-items:center;font-weight:900;font-size:.9rem;
+    border:2px solid var(--line);box-shadow:2px 3px 0 #000;
+  }
+  .steps>li h4{margin:0 0 9px;font-size:1.02rem;color:var(--ink);font-weight:800;}
+  .steps>li ul{margin:10px 0 0;padding-left:1.25rem;}
+  .steps>li li{margin:0 0 8px;color:var(--muted);}
+  .steps>li li:last-child{margin-bottom:0;}
+  .steps>li ul li::marker{color:var(--accent-dark);}
+  .section-note{font-size:.9rem;color:var(--muted);margin:-6px 0 18px;}
+  .subhead{
+    font-size:.98rem;font-weight:900;color:var(--ink);margin:26px 0 14px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .subhead::before{
+    content:"";width:13px;height:13px;border-radius:4px;background:var(--accent);
+    border:2px solid var(--line);
+  }
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width:920px){
+    .legend,.grid,.duo{grid-template-columns:1fr;}
+    .hero{padding:20px 0 6px;}
+    .hero .wrap{padding:28px 22px 26px;}
+    .hero .wrap::after{width:150px;height:150px;top:-52px;right:-52px;}
+    .hero .wrap::before{display:none;}
+    .toc .wrap{flex-wrap:nowrap;overflow-x:auto;padding-bottom:10px;
+      scrollbar-width:none;-ms-overflow-style:none;}
+    .toc .wrap::-webkit-scrollbar{display:none;}
+    .aspect-head h2{font-size:1.18rem;}
+    .aspect-head{flex-wrap:wrap;gap:12px;}
+    .aspect-head .rule{display:none;}
+  }
+  @media (max-width:560px){
+    .wrap{padding:0 16px;}
+    .steps>li{padding:18px 16px 18px 62px;}
+    .hero h1{font-size:1.5rem;}
+    .toc a{font-size:.8rem;padding:8px 13px;}
+    .toc .wrap{gap:8px;}
+    .aspect{margin-bottom:44px;scroll-margin-top:90px;}
+  }
+  @media (max-width:420px){
+    .hero .wrap{padding:24px 18px 22px;}
+    .hero h1{font-size:1.34rem;}
+    .hero p{font-size:.94rem;}
+    .eyebrow{font-size:.66rem;padding:6px 12px;}
+    .legend,.grid,.duo{gap:14px;}
+    .legend{margin-top:20px;}
+    .paper{padding:20px 16px 16px;}
+    .paper h2{font-size:.97rem;}
+    .chip{font-size:.72rem;padding:5px 10px;}
+    .aspect-head h2{font-size:1.06rem;}
+    .aspect-head .num{width:32px;height:32px;font-size:.74rem;
+      border-radius:9px;box-shadow:2px 2px 0 #000;}
+    .cell{padding:20px 16px 16px;}
+    .panel{padding:18px 15px 16px;}
+    .subhead{font-size:.92rem;}
+    .callout{padding:14px 15px;font-size:.86rem;}
+    .steps>li{padding:16px 14px 16px 54px;font-size:.88rem;}
+    .steps>li::before{left:14px;top:16px;width:28px;height:28px;
+      font-size:.8rem;border-radius:8px;}
+    .steps>li h4{font-size:.95rem;}
+    table.data th,table.data td{padding:11px 12px;font-size:.83rem;}
+    .badge{font-size:.68rem;padding:3px 9px;}
+    footer{padding:20px 0 44px;font-size:.8rem;}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Gap Analysis</span>
+    <h1>Perbandingan Penelitian Chatbot Akademik Berbasis Retrieval-Augmented Generation</h1>
+    <p>Analisis tiga paper pada domain layanan informasi akademik kampus, dibandingkan berdasarkan lima aspek: Judul, Masalah &amp; Tujuan, Data, Metode, dan Evaluasi.</p>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="legend">
+    <article class="paper p1">
+      <span class="paper-tag">Paper 1</span>
+      <h2>Development of an Intelligent Smart Campus Chatbot Based on NLP and RAG for Integrated Academic Information Services</h2>
+      <p class="inst">Wilianto et al. (2026) · Universitas IBBI</p>
+      <div class="stats">
+        <span class="chip">Akurasi <b>91%</b></span>
+        <span class="chip">F1 <b>0,911</b></span>
+        <span class="chip">Halusinasi <b>4,3%</b></span>
+      </div>
+    </article>
+    <article class="paper p2">
+      <span class="paper-tag">Paper 2</span>
+      <h2>Academic Chatbot for Campus Information Services Using Retrieval-Augmented Generation</h2>
+      <p class="inst">Yafie et al. (2026) · Telkom University</p>
+      <div class="stats">
+        <span class="chip">Akurasi <b>84%</b></span>
+        <span class="chip">SUS <b>78</b></span>
+        <span class="chip">NPS <b>+32</b></span>
+      </div>
+    </article>
+    <article class="paper p3">
+      <span class="paper-tag">Paper 3</span>
+      <h2>Development of an Academic Services Chatbot Based on Retrieval-Augmented Generation (RAG)</h2>
+      <p class="inst">Husain et al. (2025) · FPMIPA UPI</p>
+      <div class="stats">
+        <span class="chip">Faithfulness <b>0,91</b></span>
+        <span class="chip">100 soal</span>
+        <span class="chip">Tanpa baseline</span>
+      </div>
+    </article>
+  </section>
+</div>
+
+<nav class="toc">
+  <div class="wrap">
+    <a href="#masalah">Masalah &amp; Tujuan</a>
+    <a href="#data">Data</a>
+    <a href="#metode">Metode</a>
+    <a href="#evaluasi">Evaluasi</a>
+    <a href="#perbandingan">Persamaan &amp; Perbedaan</a>
+    <a href="#kelebihan">Kelebihan &amp; Keterbatasan</a>
+    <a href="#gap">Research Gap</a>
+    <a href="#histor">Data Historis</a>
+    <a href="#metode-pilih">Pemilihan Metode</a>
+    <a href="#kesimpulan">Kesimpulan</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+  <!-- ============ MASALAH ============ -->
+  <section class="aspect" id="masalah">
+    <div class="aspect-head"><span class="num">01</span><h2>Masalah &amp; Tujuan</h2><span class="rule"></span></div>
+    <div class="grid">
+
+      <article class="cell p1">
+        <h3>Paper 1 <span class="paper-badge">IBBI</span></h3>
+        <p><span class="label">Masalah</span>Peningkatan volume dan kompleksitas informasi akademik di perguruan tinggi menimbulkan kendala pada layanan informasi konvensional berbasis manual. Mahasiswa dan calon mahasiswa sering mengalami keterlambatan jawaban, ketidakkonsistenan informasi, serta keterbatasan jam operasional staf administrasi. Chatbot berbasis aturan (rule-based) kaku dan mudah patah di luar skrip, sedangkan LLM umum tanpa grounding berisiko menghasilkan jawaban yang halusinatif/tidak akurat secara faktual.</p>
+        <p><span class="label">Alasan Penelitian</span>Belum ada penelitian terdahulu di Indonesia yang menggabungkan RAG spesifik domain dengan vector database serta mengevaluasinya secara komprehensif menggunakan metrik standar NLP (Precision, Recall, F1-score) dan pengukuran tingkat halusinasi pada konteks pendidikan tinggi.</p>
+        <p><span class="label">Tujuan Penelitian</span></p>
+        <ol>
+          <li>Merancang dan mengimplementasikan chatbot berbasis RAG menggunakan LangChain, FAISS, dan LLM untuk Universitas IBBI.</li>
+          <li>Membangun knowledge base akademik terstruktur dari dokumen resmi kampus.</li>
+          <li>Mengevaluasi performa sistem dengan metrik NLP (Precision, Recall, F1-score) dan mengukur tingkat halusinasi.</li>
+          <li>Mengukur penerimaan pengguna melalui instrumen User Acceptance Testing (UAT).</li>
+          <li>Mendukung transformasi digital Smart Campus.</li>
+        </ol>
+        <p><span class="label">Target Pengguna &amp; Domain</span>Mahasiswa aktif dan calon mahasiswa Universitas IBBI pada domain layanan informasi akademik dan prosedur administratif kampus.</p>
+      </article>
+
+      <article class="cell p2">
+        <h3>Paper 2 <span class="paper-badge">Telkom</span></h3>
+        <p><span class="label">Masalah</span>Pusat layanan informasi universitas menangani banyak pertanyaan berulang mengenai jadwal akademik, registrasi, dan kebijakan yang tersebar di ratusan dokumen PDF dan laman web. Pencarian manual lambat, menimbulkan beban administratif tinggi, dan jawaban staf sering tidak konsisten. Chatbot berbasis aturan (rule-based) kaku dan gagal memahami variasi bahasa alami, sedangkan LLM generatif murni sulit diperbarui dan rentan menghasilkan jawaban halusinatif/tanpa dasar dokumen.</p>
+        <p><span class="label">Alasan Penelitian</span>Masih sedikit penelitian yang menerapkan RAG untuk layanan informasi kampus berbahasa Indonesia yang dievaluasi secara terpisah antara kinerja retrieval dan generation secara terukur dan reproducible.</p>
+        <p><span class="label">Tujuan Penelitian</span></p>
+        <ol>
+          <li>Merancang pipeline RAG modular untuk dokumen kampus Indonesia yang mudah diperbarui (RQ1).</li>
+          <li>Mengevaluasi performa retrieval dan generation secara terpisah dan dapat direproduksi (RQ2).</li>
+          <li>Memastikan sistem memenuhi standar etika data internal kampus (RQ3).</li>
+        </ol>
+        <p><span class="label">Target Pengguna &amp; Domain</span>Mahasiswa dan staf di lingkungan Telkom University pada domain layanan informasi akademik kampus.</p>
+      </article>
+
+      <article class="cell p3">
+        <h3>Paper 3 <span class="paper-badge">UPI</span></h3>
+        <p><span class="label">Masalah</span>Institusi pendidikan tinggi mengalami kesulitan dalam memberikan informasi akademik yang akurat dan mudah diakses. Saluran komunikasi tradisional seperti telepon dan email sering kali lambat dan tidak memuaskan. Chatbot berbasis aturan (rule-based) sangat terbatas dan kaku, sedangkan Large Language Models (LLM) standar berisiko tinggi mengalami halusinasi faktual (factual hallucinations) dan tidak memiliki pengetahuan tentang data internal institusi yang bersifat privat/spesifik.</p>
+        <p><span class="label">Alasan Penelitian</span>Terdapat kebutuhan mendesak (research gap) akan arsitektur chatbot yang menggabungkan kemampuan percakapan canggih LLM dengan tingkat akurasi faktual yang tinggi pada domain akademik spesifik guna menekan risiko halusinasi.</p>
+        <p><span class="label">Tujuan Penelitian</span>Mengimplementasikan kerangka kerja Retrieval-Augmented Generation (RAG) untuk membangun asisten AI yang tepercaya dan berbasis fakta (factually grounded) pada knowledge base terverifikasi, sehingga meningkatkan aksesibilitas dan efektivitas layanan akademik.</p>
+        <p><span class="label">Target Pengguna &amp; Domain</span>Mahasiswa dan civitas akademika pada domain layanan administrasi dan informasi akademik di Fakultas Pendidikan Matematika dan Ilmu Pengetahuan Alam (FPMIPA) Universitas Pendidikan Indonesia (UPI).</p>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ DATA ============ -->
+  <section class="aspect" id="data">
+    <div class="aspect-head"><span class="num">02</span><h2>Data</h2><span class="rule"></span></div>
+    <div class="grid">
+
+      <article class="cell p1">
+        <h3>Paper 1 <span class="paper-badge">IBBI</span></h3>
+        <p><span class="label">Jenis Dataset</span>Dokumen resmi institusi berjumlah 42 dokumen (format PDF, DOCX, TXT) dengan total sekitar 180.000 token setelah preprocessing.</p>
+        <p><span class="label">Asal &amp; Cara Pengumpulan</span>Kebutuhan data dianalisis dari 3 sumber (Research Methodology – Requirement Analysis, hal. 1331):</p>
+        <ol>
+          <li>Wawancara semi-terstruktur dengan 5 staf administrasi.</li>
+          <li>Analisis isi log percakapan WhatsApp selama 3 semester (menghasilkan 1.247 templat pertanyaan unik).</li>
+          <li>Kuesioner ke 80 mahasiswa untuk pemetaan mode akses informasi.</li>
+        </ol>
+        <p>Dokumen institusi dikelompokkan ke dalam 5 kategori utama (Data Collection, hal. 1331–1332):</p>
+        <ol>
+          <li>Kurikulum dan capaian pembelajaran prodi (12 dokumen).</li>
+          <li>Jadwal biaya kuliah dan kebijakan pembayaran (8 dokumen).</li>
+          <li>Kriteria, kelayakan, dan prosedur beasiswa (6 dokumen).</li>
+          <li>Kalender akademik dan jadwal ujian (9 dokumen).</li>
+          <li>Syarat pendaftaran dan prosedur registrasi mahasiswa baru (7 dokumen).</li>
+        </ol>
+        <p><span class="label">Preprocessing</span>Ekstraksi teks menggunakan Python-docx dan PDFMiner <span class="arrow">→</span> Normalisasi teks (penghapusan header, footer, nomor halaman, dan whitespace ganda) <span class="arrow">→</span> Tokenisasi kalimat menggunakan NLTK <span class="arrow">→</span> Chunking dengan sliding window 512 token dan overlap 50 token.</p>
+        <p><span class="label">Transformasi ke Knowledge Base</span>Chunk teks diubah menjadi vektor 1.536 dimensi menggunakan model embedding OpenAI text-embedding-ada-002. Vektor diindeks pada vector database FAISS menggunakan L2 distance pada vektor ternormalisasi unit (secara matematis ekuivalen dengan cosine similarity).</p>
+        <p><span class="label">Sifat Data</span>Menggunakan dokumen resmi institusi sebagai knowledge base RAG utama, sedangkan log percakapan historis (WhatsApp) digunakan hanya pada tahap analisis kebutuhan pengguna untuk mengidentifikasi templat pertanyaan.</p>
+      </article>
+
+      <article class="cell p2">
+        <h3>Paper 2 <span class="paper-badge">Telkom</span></h3>
+        <p><span class="label">Jenis Dataset</span>Dokumen resmi internal universitas dalam format PDF dan HTML.</p>
+        <p><span class="label">Asal &amp; Cara Pengumpulan</span>Diambil langsung dari repositori resmi unit layanan akademik universitas.</p>
+        <p><span class="label">Jumlah Data / Dokumen</span>Total 18 dokumen, yang terdiri dari (Section 3.2, Table 2, hal. 29):</p>
+        <ol>
+          <li>Academic Calendar (1 PDF).</li>
+          <li>Registration SOPs (3 PDF).</li>
+          <li>Academic Guidelines (2 PDF).</li>
+          <li>FAQs (10 HTML/PDF).</li>
+          <li>Rector's Regulations (2 PDF).</li>
+        </ol>
+        <p><span class="label">Preprocessing</span>Teks diekstraksi dari PDF menggunakan PyMuPDF dan pdfplumber, dilanjutkan dengan pembersihan (header/footer dihapus, angka romawi dinormalisasi, karakter kontrol dibuang). Teks bersih dipotong (chunking) menjadi ukuran 200–400 kata dengan overlap ~50 kata.</p>
+        <p><span class="label">Transformasi ke Knowledge Base</span>Setiap chunk di-encode menjadi vektor 384 dimensi menggunakan model paraphrase-multilingual-MiniLM-L12-v2 dan disimpan pada indeks FAISS (IndexIVFFlat). Setiap chunk diberi label metadata berupa nama dokumen dan nomor halaman untuk keperluan sitasi.</p>
+        <p><span class="label">Sifat Data</span>Menggunakan dokumen resmi institusi (SOP, Kalender Akademik, FAQ, Peraturan Rektor).</p>
+      </article>
+
+      <article class="cell p3">
+        <h3>Paper 3 <span class="paper-badge">UPI</span></h3>
+        <p><span class="label">Jenis Dataset</span>Dokumen resmi institusi dan konten web portal akademik kampus.</p>
+        <p><span class="label">Asal &amp; Cara Pengumpulan</span>Dikumpulkan melalui scraping konten situs web utama universitas, portal akademik dan kemahasiswaan (akmawa) FPMIPA UPI, serta pengumpulan dokumen resmi FPMIPA UPI.</p>
+        <p><span class="label">Jumlah Data / Dokumen / Pertanyaan</span></p>
+        <ul>
+          <li>Jumlah dokumen knowledge base tidak disebutkan secara eksak dalam teks, namun seluruh konten diproses menjadi nodes/chunks terstruktur.</li>
+          <li>Dataset evaluasi terdiri dari 100 pertanyaan unik yang dirancang khusus dan dikategorikan menjadi 60 pertanyaan faktual, 20 pertanyaan penalaran (reasoning), dan 20 pertanyaan di luar konteks (out-of-context).</li>
+        </ul>
+        <p><span class="label">Preprocessing</span></p>
+        <ol>
+          <li>Penggunaan pustaka docling untuk memparsi konten dari web dan berbagai format dokumen.</li>
+          <li>Pengintegrasian model vision-language Qwen2-VL-2B-Instruct untuk menghasilkan deskripsi teks otomatis dari elemen non-teks/gambar.</li>
+          <li>Otomasi identifikasi struktur visual tabel dan linierisasi isi sel tabel menjadi teks.</li>
+          <li>Pemotongan teks (chunking) menggunakan docling HybridChunker yang mengombinasikan struktur semantik dengan batas token (tokenizer meta-llama/Llama-3.1-8B).</li>
+          <li>Ekstraksi metadata lengkap (chunk_id, filename, page_numbers) dan pembentukan struktur node hierarkis (parent-child relationships serta hubungan sekuensial previous_id/next_id).</li>
+        </ol>
+        <p><span class="label">Transformasi ke Knowledge Base</span>Vektor embedding dibangkitkan menggunakan model gemini-embedding-001 dari Google, lalu disimpan bersama payload metadata ke dalam vector store Qdrant.</p>
+        <p><span class="label">Sifat Data</span>Menggunakan dokumen resmi institusi dan konten web portal resmi (tidak menggunakan riwayat percakapan historis/log chat maupun FAQ tersendiri).</p>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ METODE ============ -->
+  <section class="aspect" id="metode">
+    <div class="aspect-head"><span class="num">03</span><h2>Metode</h2><span class="rule"></span></div>
+    <div class="grid">
+
+      <article class="cell p1">
+        <h3>Paper 1 <span class="paper-badge">IBBI</span></h3>
+        <p><span class="label">Metode Utama</span>Retrieval-Augmented Generation (RAG) yang diintegrasikan dalam metodologi Research and Development (R&amp;D) 8 tahapan (Pressman &amp; Maxim / Sommerville).</p>
+        <p><span class="label">Alasan Pemilihan</span>Penulis menyatakan RAG mampu mengambil dokumen relevan dari knowledge base secara dinamis sebelum sintesis jawaban, sehingga membatasi jawaban pada konteks asli dokumen dan menekan angka halusinasi.</p>
+        <p><span class="label">Model LLM &amp; Embedding</span></p>
+        <ul>
+          <li>Model Embedding: OpenAI text-embedding-ada-002 (1.536 dimensi).</li>
+          <li>Model Generatif (LLM): GPT-3.5-turbo (utama) dan Groq LLaMA-3-8B (alternatif open-source).</li>
+        </ul>
+        <p><span class="label">Framework &amp; Database</span></p>
+        <ul>
+          <li>Orkestrasi RAG: LangChain (v0.1.x).</li>
+          <li>Vector Database: FAISS (faiss-cpu v1.7.4).</li>
+          <li>Backend API: Flask 2.3.3 &amp; Flask-CORS.</li>
+          <li>Logging Store: SQLite untuk query, intent, nilai confidence, dan waktu respons.</li>
+        </ul>
+        <p><span class="label">Pipeline RAG (7 Langkah)</span></p>
+        <ol>
+          <li>User Query dimasukkan via antarmuka Web.</li>
+          <li>Query diubah menjadi vektor oleh model embedding.</li>
+          <li>FAISS melakukan pencarian top-5 chunks paling mirip secara semantik.</li>
+          <li>Top-5 chunks digabungkan dengan query dan dimasukkan ke dalam system prompt LLM.</li>
+          <li>System Prompt mengunci batas pengetahuan (boundary enforcement): <span class="quote">"You are an academic information assistant for IBBI University. Answer the question using only the provided context. If the answer is not in the context, respond: 'I do not have information on this topic...'"</span></li>
+          <li>LLM meregenerasi jawaban berbasis konteks.</li>
+          <li>Jawaban ditampilkan ke pengguna dan log transaksi disimpan ke SQLite.</li>
+        </ol>
+      </article>
+
+      <article class="cell p2">
+        <h3>Paper 2 <span class="paper-badge">Telkom</span></h3>
+        <p><span class="label">Metode Utama</span>Retrieval-Augmented Generation (RAG) dengan pendekatan rekayasa sistem (system-engineering approach) dan evaluasi mixed-method.</p>
+        <p><span class="label">Alasan Pemilihan</span>RAG memisahkan memori parametrik LLM dari memori non-parametrik eksternal (indeks vektor), sehingga knowledge base dapat diperbarui tanpa retraining, menekan halusinasi, dan memberikan sitasi yang dapat dilacak.</p>
+        <p><span class="label">Model LLM &amp; Embedding</span></p>
+        <ul>
+          <li>Model Embedding: paraphrase-multilingual-MiniLM-L12-v2 (384 dimensi) dari Sentence-Transformers.</li>
+          <li>Model LLM: "an open-source generative LLM with reasonable Indonesian capability" (nama/versi spesifik tidak disebutkan).</li>
+        </ul>
+        <p><span class="label">Framework &amp; Vector Database</span>Python, Sentence-Transformers, FAISS (IndexIVFFlat), dan framework evaluasi RAGAS.</p>
+        <p><span class="label">Pipeline RAG</span></p>
+        <ol>
+          <li>Chunking &amp; Indexing: Dokumen dipotong (200–400 kata, overlap 50 kata) + label metadata [Doc, p.X].</li>
+          <li>Retrieval: Kueri pengguna di-embed dengan MiniLM, lalu FAISS mengambil top k = 5 chunks berbasis cosine similarity.</li>
+          <li>Prompting: Top-5 chunks dan pertanyaan dimasukkan ke instruction template: <span class="quote">"You are an academic assistant chatbot. Answer the question using ONLY the information below. Cite the document name and page number in square brackets after every fact you state. If the information is not in the context, say so..."</span></li>
+          <li>Generation &amp; Post-processing: LLM menghasilkan jawaban. Post-processing memverifikasi adanya sitasi [Doc, p.X], memotong teks redundan, dan melakukan fallback jika nilai kemiripan di bawah ambang batas.</li>
+        </ol>
+      </article>
+
+      <article class="cell p3">
+        <h3>Paper 3 <span class="paper-badge">UPI</span></h3>
+        <p><span class="label">Metode Utama</span>Multi-stage Retrieval-Augmented Generation (RAG) pipeline berbasis struktur node hierarkis, query decomposition, reranking, dan memori percakapan.</p>
+        <p><span class="label">Alasan Pemilihan</span>RAG mampu mengambil informasi relevan dari knowledge base eksternal terverifikasi sebelum sintesis jawaban, sehingga membatasi LLM pada konteks nyata dan mencegah halusinasi.</p>
+        <p><span class="label">Model LLM &amp; Embedding</span></p>
+        <ul>
+          <li>Model Embedding: Google gemini-embedding-001.</li>
+          <li>Model Generatif (LLM Utama): Google Gemini 2.5 Pro.</li>
+          <li>Model Pendukung: Qwen2-VL-2B-Instruct (deskripsi gambar/tabel), meta-llama/Llama-3.1-8B (tokenizer chunking), dan ms-marco-MiniLM-L-12-v2 via FlashrankRerank (reranking).</li>
+        </ul>
+        <p><span class="label">Framework &amp; Vector Database</span></p>
+        <ul>
+          <li>Framework RAG: LangChain (RetrievalQA chain dan RunnableWithMessageHistory).</li>
+          <li>Vector Database: Qdrant.</li>
+          <li>Pustaka Parser/Chunking: docling (HybridChunker).</li>
+          <li>Antarmuka Pengguna (UI): Streamlit.</li>
+        </ul>
+        <p><span class="label">Pipeline RAG (Alur Ringkas)</span></p>
+        <ol>
+          <li>Query Contextualization: Mengubah kueri/follow-up menjadi standalone question memanfaatkan riwayat percakapan.</li>
+          <li>Query Decomposition: LLM memecah pertanyaan mandiri menjadi beberapa sub-pertanyaan yang lebih sederhana dan terfokus.</li>
+          <li>Retrieval: Qdrant mengambil top-15 chunks relevan untuk tiap sub-pertanyaan.</li>
+          <li>Context Expansion: Memanfaatkan metadata hierarkis (parent_id, child_ids, next_id) dan pemindaian judul dokumen untuk menarik chunk tetangga/parent guna memperluas konteks.</li>
+          <li>Reranking: Menggunakan FlashrankRerank (ms-marco-MiniLM-L-12-v2) untuk menyaring kandidat konteks dan mengambil top-5 chunks paling relevan.</li>
+          <li>Generation &amp; Memory: Konteks hasil reranking, pertanyaan asli, dan riwayat percakapan digabungkan ke PromptTemplate dan diproses oleh Gemini 2.5 Pro via LangChain untuk menghasilkan jawaban beserta dokumen referensi.</li>
+        </ol>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ EVALUASI ============ -->
+  <section class="aspect" id="evaluasi">
+    <div class="aspect-head"><span class="num">04</span><h2>Evaluasi</h2><span class="rule"></span></div>
+    <div class="grid">
+
+      <article class="cell p1">
+        <h3>Paper 1 <span class="paper-badge">IBBI</span></h3>
+        <p><span class="label">Metode &amp; Metrik</span>Evaluasi performa NLP berbasis kuantitatif (Accuracy, Precision, Recall, F1-score makro-rata-rata), analisis halusinasi (Hallucination Rate), pengukuran latency (waktu respons), dan pengujian penerimaan pengguna (User Acceptance Testing / UAT).</p>
+        <p><span class="label">Data Pengujian</span></p>
+        <ul>
+          <li>200 pertanyaan ground-truth (masing-masing 40 pertanyaan untuk 5 kategori) disusun staf akademik, inter-rater agreement Cohen's kappa = 0,87.</li>
+          <li>50 responden UAT (35 mahasiswa aktif, 15 calon mahasiswa) dengan kuesioner skala Likert 5 poin (Cronbach's alpha = 0,83).</li>
+        </ul>
+        <p><span class="label">Hasil Numerik Utama</span></p>
+        <ul>
+          <li>Akurasi Keseluruhan: <span class="metric">91%</span></li>
+          <li>Precision Makro: 0,914</li>
+          <li>Recall Makro: 0,908</li>
+          <li>F1-Score Makro: <span class="metric">0,911</span> (Biaya Kuliah 0,937; Kalender Akademik 0,925; Prodi 0,912; Penerimaan 0,905; Beasiswa 0,875)</li>
+          <li>Tingkat Halusinasi: <span class="metric">4,3%</span> (9 dari 200 pertanyaan, seluruhnya kategori beasiswa akibat ambiguitas dokumen sumber)</li>
+          <li>Waktu Respons Rata-rata: <span class="metric">3,2 detik</span> (embedding 0,4s + retrieval FAISS 0,1s + LLM inference 2,7s; Min 1,7s, Max 4,8s)</li>
+          <li>UAT Satisfaction Rate: <span class="metric">88%</span> (skor rata-rata 4,40/5,0)</li>
+        </ul>
+        <p><span class="label">Baseline Pembanding</span>Dibandingkan dengan sistem Rule-Based Baseline (pencocokan intent menggunakan TF-IDF cosine similarity). Sistem RAG terbukti unggul <b>18%</b> pada akurasi (91% vs 73%) dan naik <b>0,17</b> pada F1-score (0,911 vs 0,74).</p>
+        <p><span class="label">Fokus Pengukuran</span>Retrieval accuracy, kualitas dan kebenaran jawaban (factuality/hallucination), latency sistem, serta usability/user acceptance.</p>
+      </article>
+
+      <article class="cell p2">
+        <h3>Paper 2 <span class="paper-badge">Telkom</span></h3>
+        <p><span class="label">Metode &amp; Metrik</span>Protokol evaluasi 2-layer (Section 3.8, hal. 36–41):</p>
+        <ul>
+          <li><b>Kuantitatif:</b> Metrik IR (Precision@5, Recall@5), Expert-judged Accuracy, 4 sub-metrik RAGAS (Faithfulness, Answer Relevancy, Context Precision, Context Recall), Groundedness, Response Time. Uji statistik McNemar's test &amp; paired bootstrap (10.000 resamples, 95% CI).</li>
+          <li><b>Kualitatif:</b> System Usability Scale (SUS), Net Promoter Score (NPS), Thematic Analysis 6 fase (Braun &amp; Clarke).</li>
+        </ul>
+        <p><span class="label">Data Pengujian</span></p>
+        <ul>
+          <li>100 pertanyaan Q&amp;A (50 development, 50 final test set) dibuat dari dokumen oleh 2 pakar.</li>
+          <li>30 partisipan penguji (mahasiswa dan staf akademik) untuk UAT/usabilitas.</li>
+        </ul>
+        <p><span class="label">Hasil Numerik Utama (50 Final Test Set – Table 3, hal. 43)</span></p>
+        <ul>
+          <li>Akurasi Jawaban (Expert): <span class="metric">84%</span> (95% CI: 76–90%)</li>
+          <li>Retrieval IR: Precision@5 = 0,80 [0,74–0,86]; Recall@5 = 0,72 [0,65–0,79]</li>
+          <li>RAGAS: Faithfulness 0,86; Answer Relevancy 0,87; Context Precision 0,83; Context Recall 0,78</li>
+          <li>Groundedness = 0,88 (88% jawaban memuat sitasi); Response Time = <span class="metric">1,7 detik</span></li>
+          <li>Usability: SUS = <span class="metric">78</span> (above average); NPS = <span class="metric">+32</span></li>
+        </ul>
+        <p><span class="label">Baseline Pembanding (Table 3, hal. 43)</span></p>
+        <ul>
+          <li>B1 (Lexical – TF-IDF/BM25): Prec@5 0,62; Rec@5 0,55; Akurasi 68%; Waktu 1,2s.</li>
+          <li>B2 (Semantic – vector tanpa LLM): Prec@5 0,71; Rec@5 0,63; Akurasi 73%; Waktu 1,5s.</li>
+          <li>B3 (LLM-only tanpa retrieval): Akurasi 60%; Faithfulness 0,46; Ans. Relevancy 0,71; Waktu 0,9s.</li>
+        </ul>
+        <p><span class="label">Fokus Pengukuran</span>Retrieval (Precision/Recall/Context Precision/Recall), kualitas &amp; faktualitas jawaban (Accuracy, Faithfulness, Groundedness), serta usabilitas &amp; latensi (SUS, NPS, Latency).</p>
+      </article>
+
+      <article class="cell p3">
+        <h3>Paper 3 <span class="paper-badge">UPI</span></h3>
+        <p><span class="label">Metode &amp; Metrik</span>Evaluasi kuantitatif dengan metrik otomatis dari kerangka RAGAS (Retrieval-Aided Generation Assessment) pada 100 pertanyaan.</p>
+        <ul>
+          <li>Faithfulness, Answer Relevancy, Context Recall, Answer Semantic Similarity, dan Factual Correctness (Precision, Recall, F1).</li>
+        </ul>
+        <p><span class="label">Data Pengujian</span>100 pertanyaan kustom, 3 kategori:</p>
+        <ol>
+          <li>Factual (60 soal): jawaban tersurat langsung dalam knowledge base.</li>
+          <li>Reasoning (20 soal): butuh penggabungan &amp; penalaran dari beberapa sumber.</li>
+          <li>Out-of-Context (20 soal): jawaban sengaja tidak ada, menguji graceful refusal.</li>
+        </ol>
+        <p><span class="label">Hasil Numerik (Table 1, hal. 37)</span></p>
+        <ul>
+          <li>Factual (60): Faithfulness <span class="metric">0,9100</span>; Context Recall 0,8519; Answer Relevancy 0,6862; Semantic Similarity 0,7682</li>
+          <li>Reasoning (20): Faithfulness 0,9048; Context Recall 0,5926; Answer Relevancy 0,4182; Semantic Similarity 0,7373</li>
+          <li>Out-of-Context (20): Factual Correctness (Precision) 0,8125; Recall 0,6415; F1 0,6875; Semantic Similarity 0,7572</li>
+        </ul>
+        <p><span class="label">Baseline</span>Tidak ada baseline/sistem pembanding empiris yang diuji dalam paper ini (diskusi pembanding hanya berbasis literatur).</p>
+        <p><span class="label">Fokus Pengukuran</span>Kinerja retrieval (Context Recall), kualitas &amp; faktualitas jawaban (Faithfulness, Answer Relevancy, Semantic Similarity), serta penanganan kueri di luar konteks. Tidak ada usability testing (SUS/UAT).</p>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ PERSAMAAN & PERBEDAAN ============ -->
+  <section class="aspect" id="perbandingan">
+    <div class="aspect-head"><span class="num">05</span><h2>Persamaan &amp; Perbedaan Penelitian</h2><span class="rule"></span></div>
+    <p class="section-note">Perbandingan komponen utama dari ketiga paper.</p>
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr>
+            <th>Aspek</th>
+            <th class="c1">Paper 1 · Wilianto et al. (2026)</th>
+            <th class="c2">Paper 2 · Yafie et al. (2026)</th>
+            <th class="c3">Paper 3 · Husain et al. (2025)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>Objek &amp; Domain</th>
+            <td>Universitas IBBI (Layanan Informasi Akademik).</td>
+            <td>Telkom University (Layanan Akademik Kampus).</td>
+            <td>FPMIPA Universitas Pendidikan Indonesia (UPI).</td>
+          </tr>
+          <tr>
+            <th>Tujuan Utama</th>
+            <td>Mengembangkan &amp; mengevaluasi Intelligent Smart Campus Chatbot berbasis RAG untuk menekan halusinasi dan mengukur penerimaan pengguna.</td>
+            <td>Merancang pipeline RAG modular berbahasa Indonesia yang mudah diperbarui dan mengevaluasi retrieval vs generation secara terpisah.</td>
+            <td>Mengembangkan RAG multi-stage yang tepercaya untuk menjawab kueri faktual, reasoning, dan menolak kueri luar konteks (out-of-context).</td>
+          </tr>
+          <tr>
+            <th>Sumber Data</th>
+            <td>42 dokumen resmi (PDF, DOCX, TXT; ~180.000 token) + analisis log WhatsApp 3 semester (1.247 templat kueri).</td>
+            <td>18 dokumen resmi (PDF &amp; HTML: SOP, Kalender Akademik, FAQ, SK Rektor).</td>
+            <td>Dokumen resmi &amp; web scraping portal akademik FPMIPA UPI (teks, gambar, &amp; tabel via VLM).</td>
+          </tr>
+          <tr>
+            <th>Metode AI &amp; Arsitektur RAG</th>
+            <td>RAG 7-layer: LangChain, FAISS (L2 distance), text-embedding-ada-002 (1536-dim), GPT-3.5-turbo / Groq LLaMA-3.</td>
+            <td>RAG: Sentence-Transformers (MiniLM-L12-v2, 384-dim), FAISS (IndexIVFFlat), open-source LLM, prompt sitasi [Doc, p.X].</td>
+            <td>Multi-stage RAG: docling HybridChunker + node hierarkis, Qdrant, gemini-embedding-001, FlashrankRerank (ms-marco-MiniLM), Gemini 2.5 Pro.</td>
+          </tr>
+          <tr>
+            <th>Proses Chunking &amp; Retrieval</th>
+            <td>Sliding window 512 token (overlap 50 token); dense retrieval top-k = 5.</td>
+            <td>Overlapping chunks 200–400 kata (overlap ~50 kata); dense retrieval top-k = 5.</td>
+            <td>HybridChunker (semantic + token limit LLaMA-3.1-8B); Context Expansion (parent-child &amp; sequential); Reranking top-5 dari top-15.</td>
+          </tr>
+          <tr>
+            <th>Metode Evaluasi</th>
+            <td>200 pertanyaan ground truth (5 kategori); NLP Metrics (Precision, Recall, F1), Hallucination Rate, Latency, UAT Likert 50 responden.</td>
+            <td>Protokol 2-layer: 100 Q&amp;A test set (IR metrics: Prec@5, Rec@5; 4 sub-metrik RAGAS; McNemar test &amp; paired bootstrap) + SUS &amp; NPS (30 responden).</td>
+            <td>Metrik otomatis RAGAS pada 100 kueri sintetis (60 Factual, 20 Reasoning, 20 Out-of-Context); Factual Correctness.</td>
+          </tr>
+          <tr>
+            <th>Hasil Utama</th>
+            <td>Akurasi <b>91%</b>, F1-score <b>0,911</b>, Hallucination Rate <b>4,3%</b>, latensi 3,2 detik, UAT Satisfaction 88%.</td>
+            <td>Akurasi <b>84%</b>, Prec@5 0,80, Rec@5 0,72, Faithfulness 0,86, Groundedness 0,88, latensi 1,7s, SUS 78, NPS +32. Error: 60% retrieval, 40% generation.</td>
+            <td>Factual (Faithfulness <b>0,9100</b>, Context Recall 0,8519); Reasoning (Context Recall 0,5926); Out-of-Context Refusal Rate 81,25%.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="duo">
+      <div class="panel same">
+        <h3><span class="ic">=</span>Persamaan Utama</h3>
+        <ul>
+          <li><b>Paradigma Utama:</b> Ketiga paper sepakat menerapkan Retrieval-Augmented Generation (RAG) untuk mengatasi kelemahan LLM murni (halusinasi faktual &amp; ketiadaan data internal kampus) serta kakunya chatbot rule-based.</li>
+          <li><b>Domain &amp; Landasan Pengetahuan:</b> Seluruh penelitian berfokus pada layanan informasi akademik perguruan tinggi di Indonesia dan memanfaatkan dokumen resmi institusi (SOP, pedoman akademik, kalender akademik, SK) sebagai knowledge base utama.</li>
+          <li><b>Penggunaan Vector Store &amp; Embedding:</b> Ketiganya menggunakan dense vector retrieval berbasis representasi embedding semantik untuk mengambil potongan dokumen relevan sebelum pembentukan jawaban.</li>
+        </ul>
+      </div>
+      <div class="panel diff">
+        <h3><span class="ic">&#8800;</span>Perbedaan Utama</h3>
+        <ul>
+          <li><b>Kompleksitas Arsitektur RAG:</b> Wilianto &amp; Yafie memakai pipeline RAG standar/single-stage (query langsung di-embed → top-5 chunks via FAISS). Husain memakai Multi-stage RAG: Query Contextualization (riwayat chat), Query Decomposition, Context Expansion (parent &amp; tetangga), serta Reranking (FlashrankRerank).</li>
+          <li><b>Pemrosesan Dokumen &amp; Chunking:</b> Wilianto &amp; Yafie mengandalkan chunking teks statis (sliding window 512 token / 200–400 kata). Husain memakai docling HybridChunker + VLM (Qwen2-VL-2B-Instruct) untuk gambar/tabel serta menyimpan hubungan hierarkis (parent-child &amp; sekuensial).</li>
+          <li><b>Fokus Evaluasi:</b> Yafie melakukan error analysis terpisah (60% kesalahan dari retrieval error) + usabilitas riil (SUS &amp; NPS). Husain mengevaluasi variasi tingkat kesulitan kueri dan menemukan penurunan tajam Context Recall (0,5926) pada reasoning. Wilianto menekankan metrik NLP klasik (Precision, Recall, F1) dan UAT Likert.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ KELEBIHAN & KETERBATASAN ============ -->
+  <section class="aspect" id="kelebihan">
+    <div class="aspect-head"><span class="num">06</span><h2>Kelebihan &amp; Keterbatasan Masing-Masing Paper</h2><span class="rule"></span></div>
+    <div class="table-wrap">
+      <table class="data" style="min-width:1000px">
+        <thead>
+          <tr>
+            <th>Paper</th>
+            <th class="c1">Kelebihan</th>
+            <th class="c2">Keterbatasan Eksplisit (Dinyatakan Penulis)</th>
+            <th class="c3">Keterbatasan Kritis (Hasil Analisis)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>Wilianto et al. (2026)<br><span class="muted-mini">Universitas IBBI</span></th>
+            <td>
+              <ul>
+                <li><b>Dataset &amp; Analisis Kebutuhan:</b> Kombinasi wawancara staf, kuesioner 80 mahasiswa, dan content analysis 1.247 templat kueri dari log WhatsApp 3 semester untuk merancang cakupan sistem.</li>
+                <li><b>Evaluasi Terkuantifikasi &amp; Baseline:</b> 200 pertanyaan ground truth lintas 5 kategori, inter-rater agreement tinggi (Cohen's kappa = 0,87), serta pembanding eksplisit terhadap sistem rule-based (RAG unggul +18% akurasi).</li>
+                <li><b>Pengukuran Halusinasi:</b> Melaporkan hallucination rate spesifik (4,3%) dan mengidentifikasi seluruh halusinasi terjadi pada kategori beasiswa akibat ambiguitas dokumen sumber.</li>
+              </ul>
+            </td>
+            <td>
+              <ol>
+                <li>Dataset evaluasi hanya berasal dari pakar pada satu institusi.</li>
+                <li>Hanya mendukung Bahasa Indonesia dan Bahasa Inggris.</li>
+                <li>Belum terintegrasi secara real-time dengan sistem informasi akademik (SIAKAD/portal pendaftaran).</li>
+                <li>Sampel UAT (50 responden) tergolong sedang (modest).</li>
+              </ol>
+            </td>
+            <td>
+              <ul>
+                <li>Menggunakan fixed chunking (512 token) tanpa membandingkan dengan metode semantic chunking.</li>
+                <li>Pemilihan model embedding (text-embedding-ada-002) dan FAISS tidak dibandingkan dengan embedding lokal/multilingual atau vector DB alternatif.</li>
+              </ul>
+            </td>
+          </tr>
+          <tr>
+            <th>Yafie et al. (2026)<br><span class="muted-mini">Telkom University</span></th>
+            <td>
+              <ul>
+                <li><b>Protokol Evaluasi 2-Layer Khas:</b> Menggabungkan metrik IR (Precision/Recall@5), 4 sub-metrik RAGAS, uji statistik inferensial (McNemar test &amp; paired bootstrap 10.000 resamples), serta usabilitas (SUS = 78, NPS = +32).</li>
+                <li><b>Error Analysis Kualitatif &amp; Kuantitatif:</b> Mengklasifikasikan kesalahan menjadi Retrieval Error (60%) dan Generation Error (40%) — diagnosis jelas soal bottleneck sistem.</li>
+                <li><b>Mekanisme Sitasi Transparan:</b> Mewajibkan sitasi halaman [Doc, p.X] + aturan post-processing memasang kembali sitasi jika terlewat, meningkatkan kepercayaan pengguna (Trust).</li>
+              </ul>
+            </td>
+            <td>
+              <ol>
+                <li>Static Index: indeks vektor bersifat statis dan harus diperbarui secara manual.</li>
+                <li>Modest Evaluation Scale: terbatas pada 100 pertanyaan uji dan 30 partisipan UAT.</li>
+                <li>Generator Tone: LLM off-the-shelf tidak selalu mereproduksi nada bahasa formal dokumen resmi.</li>
+                <li>Single Language: sistem hanya mendukung Bahasa Indonesia.</li>
+              </ol>
+            </td>
+            <td>
+              <ul>
+                <li>Anonimitas Model LLM: nama/spesifikasi open-source LLM tidak disebutkan ("an open-source generative LLM with reasonable Indonesian capability"), mengurangi reproducibility.</li>
+                <li>Dense Retrieval murni (MiniLM + FAISS) mengalami retrieval error 60% saat menghadapi kueri bersinonim atau fakta terfragmentasi.</li>
+              </ul>
+            </td>
+          </tr>
+          <tr>
+            <th>Husain et al. (2025)<br><span class="muted-mini">FPMIPA UPI</span></th>
+            <td>
+              <ul>
+                <li><b>Arsitektur Multi-Stage Canggih:</b> Query Contextualization, Query Decomposition, Context Expansion hierarkis (parent-child &amp; sekuensial), serta Flashrank Reranking.</li>
+                <li><b>Preprocessing Multimodal:</b> docling + VLM (Qwen2-VL-2B-Instruct) untuk mengekstraksi &amp; melinierkan tabel dan elemen visual/gambar dokumen kampus.</li>
+                <li><b>Evaluasi Berbasis Kategori Kesulitan:</b> Memisahkan kueri Faktual, Reasoning, Out-of-Context → mengungkap Context Recall anjlok ke 0,5926 pada reasoning kompleks.</li>
+                <li><b>Robustness Luar Konteks:</b> Tingkat keberhasilan penolakan menjawab (graceful refusal) 81,25% pada pertanyaan di luar knowledge base.</li>
+              </ul>
+            </td>
+            <td>
+              <ol>
+                <li>Kinerja RAG sangat tergantung kejelasan &amp; struktur dokumen sumber (Document Dependence).</li>
+                <li>Dataset evaluasi (100 pertanyaan) dibuat artifisial/sintetis.</li>
+                <li>Kinerja terikat pada model proprietary spesifik (Gemini 2.5 Pro &amp; gemini-embedding-001).</li>
+                <li>Cakupan terbatas pada satu fakultas (FPMIPA UPI).</li>
+              </ol>
+            </td>
+            <td>
+              <ul>
+                <li>Absensi UAT / Pengujian Manusia: sepenuhnya mengandalkan metrik otomatis RAGAS, tanpa usability testing (SUS/UAT) pada pengguna akhir.</li>
+                <li>Tidak Ada Baseline Pembanding: tanpa eksperimen komparatif terhadap rule-based, LLM murni, atau Fine-Tuning pada dataset yang sama.</li>
+              </ul>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ RESEARCH GAP ============ -->
+  <section class="aspect" id="gap">
+    <div class="aspect-head"><span class="num">07</span><h2>Kandidat Research Gap yang Didukung Bukti</h2><span class="rule"></span></div>
+    <p class="section-note">Berdasarkan analisis komparatif ketiga paper.</p>
+    <div class="table-wrap">
+      <table class="data" style="min-width:1120px">
+        <thead>
+          <tr>
+            <th>Kandidat Research Gap</th>
+            <th style="background:var(--p1)">Bukti Pendukung dari Paper</th>
+            <th>Keterbatasan Penelitian Terdahulu</th>
+            <th style="background:var(--p2);color:#111">Peluang Pengembangan (Skripsi UIN Walisongo)</th>
+            <th style="background:var(--p3);color:#111">Tingkat Kepastian Gap</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>1. Kinerja RAG pada Kueri Penalaran Kompleks / Multi-hop Prosedural</th>
+            <td>Husain et al. menunjukkan Context Recall RAG anjlok dari 0,8519 (Faktual) menjadi 0,5926 (Reasoning). Yafie et al. mencatat 60% kesalahan dipicu Retrieval Error.</td>
+            <td>Arsitektur RAG Reranking/Decomposition tradisional tetap gagal mengumpulkan konteks terfragmentasi di beberapa dokumen SOP.</td>
+            <td>Menerapkan Agentic RAG / Multi-step Iterative Retrieval (ReAct) yang dapat melakukan pencarian berulang secara dinamis untuk menyusun alur penanganan helpdesk prosedural.</td>
+            <td><span class="badge vhigh">Sangat Tinggi</span><br><span class="muted-mini">Didukung bukti kuantitatif RAGAS dari Husain et al. &amp; Yafie et al.</span></td>
+          </tr>
+          <tr>
+            <th>2. Perbandingan Empiris RAG vs Fine-Tuning LLM vs Hybrid pada Kasus Helpdesk Operasional</th>
+            <td>Ketiga paper hanya menguji arsitektur RAG murni bersumber dokumen statis. Tidak ada yang menguji Fine-Tuning LLM lokal (LoRA) pada data percakapan helpdesk.</td>
+            <td>Penelitian terdahulu berasumsi RAG adalah satu-satunya solusi tanpa membandingkannya dengan Fine-Tuning LLM pada kueri percakapan operasional.</td>
+            <td>Membandingkan secara head-to-head kinerja RAG, Fine-Tuning LLM lokal (LoRA), dan RAG + Fine-Tuning (Hybrid) menggunakan dataset Q&amp;A helpdesk UIN Walisongo.</td>
+            <td><span class="badge vhigh">Sangat Tinggi</span><br><span class="muted-mini">Didukung ketiadaan eksperimen pembanding di ketiga paper.</span></td>
+          </tr>
+          <tr>
+            <th>3. Kegagalan Dense Retrieval pada Kata Kunci Persis / Akronim Instansi (Hybrid Search Gap)</th>
+            <td>Yafie et al. menemukan Retrieval Error (60%) sering terjadi karena sinonim kueri atau istilah spesifik. Wilianto et al. menemukan kesalahan terbanyak pada kategori beasiswa akibat ambiguitas istilah.</td>
+            <td>Dense Retrieval murni (MiniLM / ada-002) sering melewatkan pencocokan kata kunci persis (exact-match) seperti akronim atau kode layanan kampus.</td>
+            <td>Menerapkan Hybrid Search (BM25 + Dense Retrieval) dengan Cross-Encoder Re-ranking untuk mengenali akronim lokal UIN Walisongo (mis. SIAKAD, UKT, Mahad, SPI).</td>
+            <td><span class="badge high">Tinggi</span><br><span class="muted-mini">Didukung temuan Error Analysis Yafie et al. &amp; Salman et al. yang dikutip Yafie.</span></td>
+          </tr>
+          <tr>
+            <th>4. Integrasi Aksi Operasional (Agentic Task Completion vs Pasif Q&amp;A)</th>
+            <td>Wilianto et al. dan Husain et al. mencatat bahwa ketika kueri tidak ditemukan/di luar cakupan dokumen, sistem hanya memberikan pesan penolakan statis (fallback) tanpa aksi lanjutan.</td>
+            <td>Chatbot RAG akademik terdahulu bersifat pasif (sekadar pencari teks) dan tidak terhubung ke sistem live ticketing atau aksi administratif.</td>
+            <td>Merancang Agentic Helpdesk Chatbot dengan Human-in-the-Loop (otomatis membuat ticket helpdesk atau mengarahkan ke petugas saat confidence rendah).</td>
+            <td><span class="badge vhigh">Sangat Tinggi</span><br><span class="muted-mini">Didukung keterbatasan eksplisit Wilianto et al. &amp; Husain et al.</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout info">
+      <b>Catatan Penting:</b> Klaim kebaruan skripsi tidak boleh hanya didasarkan pada "perbedaan lokasi" (UIN Walisongo vs Universitas IBBI/Telkom/UPI), melainkan harus didasarkan pada perubahan arsitektur metodologis (mis. pengujian komparatif RAG vs Fine-Tuning atau penerapan Agentic Hybrid Search) untuk menyelesaikan masalah retrieval error dan reasoning bottleneck yang terbukti terjadi pada penelitian terdahulu.
+    </div>
+  </section>
+
+  <!-- ============ DATA HISTORIS ============ -->
+  <section class="aspect" id="histor">
+    <div class="aspect-head"><span class="num">08</span><h2>Relevansi dengan Data Historis Helpdesk UIN Walisongo</h2><span class="rule"></span></div>
+
+    <div class="subhead">A. Peran Data Historis pada Penelitian Terdahulu</div>
+    <div class="table-wrap">
+      <table class="data" style="min-width:720px">
+        <thead>
+          <tr><th>Paper</th><th class="c1">Peran Data Log Percakapan Historis</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>Wilianto et al. (2026)</th>
+            <td>Log WhatsApp (3 semester, 1.247 templat) <b>HANYA</b> pada tahap Requirement Analysis untuk memetakan kategori pertanyaan. <b>Tidak</b> dijadikan Knowledge Base RAG maupun training data; Knowledge Base tetap dari 42 dokumen resmi PDF/DOCX.</td>
+          </tr>
+          <tr>
+            <th>Yafie et al. (2026)</th>
+            <td>Sebagian pertanyaan dari log layanan yang dianonimkan untuk menyusun 100 kueri evaluasi (test set), sedangkan Knowledge Base RAG murni berasal dari 18 dokumen resmi institusi.</td>
+          </tr>
+          <tr>
+            <th>Husain et al. (2025)</th>
+            <td>Tidak menggunakan log percakapan historis sama sekali (mengandalkan web scraping dan dokumen resmi).</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout warn">
+      &#9888; <b>Peringatan Metodologis:</b> Seluruh log percakapan historis helpdesk <b>TIDAK LAYAK</b> langsung dijadikan Knowledge Base RAG atau data pelatihan LLM tanpa pembersihan ketat. Percakapan mentah (raw chat) mengandung kebisingan, bahasa tidak baku, serta risiko informasi kadaluarsa.
+    </div>
+
+    <div class="subhead">B. Peluang dan Tantangan Pemanfaatan Data Historis</div>
+    <div class="duo">
+      <div class="panel same">
+        <h3><span class="ic">+</span>Peluang</h3>
+        <ul>
+          <li><b>Pemetaan Intent &amp; Variasi Bahasa Alami:</b> Log historis kaya variasi gaya bahasa mahasiswa (singkatan, typo, bahasa gaul/lokal) — berguna untuk membentuk test dataset realistis atau dataset Fine-Tuning pasangan Q&amp;A.</li>
+          <li><b>Mengidentifikasi Implicit Knowledge:</b> Log historis memuat jawaban operasional petugas helpdesk yang belum terdokumentasikan dalam SOP resmi PDF.</li>
+        </ul>
+      </div>
+      <div class="panel warn">
+        <h3><span class="ic">!</span>Tantangan &amp; Risiko Preprocessing</h3>
+        <ul>
+          <li><b>Pembersihan Data (Noise &amp; Privacy):</b> Mengeliminasi data pribadi sensitif/PII (NIM, nomor HP, lampiran slip pembayaran) sesuai standar etika privasi data.</li>
+          <li><b>Ekstraksi Pasangan Q&amp;A (Pairing Problem):</b> Chat historis multi-turn tidak terstruktur; perlu annotation/curation manual atau semi-otomatis untuk membentuk pasangan kueri-jawaban bersih.</li>
+          <li><b>Informasi Kadaluarsa (Temporal Inconsistency):</b> Kebijakan/alur helpdesk (link formulir UKT, tanggal verifikasi, nama kontak petugas) berubah tiap semester — jawaban lama tanpa verifikasi SOP terbaru berisiko obsolete.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="subhead">C. Implikasi terhadap Rancangan Chatbot UIN Walisongo</div>
+    <div class="duo">
+      <div class="panel">
+        <h3><span class="ic" style="background:var(--p1)">R</span>Jika menggunakan RAG</h3>
+        <ul>
+          <li>Log historis yang telah dikurasi menjadi FAQ bersih dapat dijadikan salah satu sumber pengetahuan pendukung, tetapi dokumen SOP resmi yang berlaku saat ini harus tetap menjadi <b>single source of truth</b> untuk mencegah halusinasi/jawaban obsolete.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3><span class="ic" style="background:var(--p3);color:#111">F</span>Jika menggunakan Fine-Tuning LLM</h3>
+        <ul>
+          <li>Log percakapan historis yang disaring ketat dapat diformat menjadi dataset instruksi Q&amp;A (Instruction Tuning Set) untuk melatih LLM lokal agar memiliki gaya bahasa/register respons helpdesk yang ramah dan sesuai konteks kampus.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PEMILIHAN METODE ============ -->
+  <section class="aspect" id="metode-pilih">
+    <div class="aspect-head"><span class="num">09</span><h2>Implikasi terhadap Pemilihan Metode</h2><span class="rule"></span></div>
+    <p class="section-note">Analisis komparatif tiga alternatif metode chatbot untuk Helpdesk UIN Walisongo Semarang.</p>
+    <div class="table-wrap">
+      <table class="data" style="min-width:1080px">
+        <thead>
+          <tr>
+            <th>Kriteria Pertimbangan</th>
+            <th class="c1">Alternatif 1 · Retrieval-Augmented Generation (RAG)</th>
+            <th class="c2">Alternatif 2 · Fine-Tuning LLM Lokal (LLaMA-3 / IndoBERT)</th>
+            <th class="c3">Alternatif 3 · Intent-Based / Rule-Based (Rasa / AIML)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>Kesesuaian Sumber Data</th>
+            <td><b>Sangat Tinggi</b> untuk dokumen SOP, Peraturan Rektor, &amp; Panduan Akademik PDF.</td>
+            <td><b>Tinggi</b> untuk data log percakapan historis yang sudah diubah menjadi pasangan Q&amp;A bersih.</td>
+            <td><b>Rendah–Sedang;</b> hanya cocok untuk FAQ dengan pola kalimat sangat terbatas.</td>
+          </tr>
+          <tr>
+            <th>Pembaruan Informasi (Knowledge Update)</th>
+            <td><b>Sangat Mudah &amp; Cepat;</b> cukup menambah/memperbarui chunk dokumen pada vector store tanpa melatih ulang model.</td>
+            <td><b>Sulit &amp; Mahal;</b> setiap perubahan kebijakan SOP, model harus di-fine-tune ulang (retraining) untuk menghindari fakta lama.</td>
+            <td><b>Manual &amp; Kaku;</b> aturan/pola regex/AIML harus ditambahkan satu per satu oleh pengembang.</td>
+          </tr>
+          <tr>
+            <th>Kualitas Jawaban &amp; Fleksibilitas</th>
+            <td><b>Tinggi;</b> mampu menyintesis jawaban bahasa alami yang luwes bersumber dari dokumen.</td>
+            <td><b>Sangat Tinggi</b> dalam gaya bahasa/nada percakapan (conversational tone), tetapi rentan menghafal teks.</td>
+            <td><b>Sangat Rendah;</b> kaku, mudah patah jika kueri pengguna tidak sesuai templat/pola.</td>
+          </tr>
+          <tr>
+            <th>Risiko Halusinasi Faktual</th>
+            <td><b>Rendah (4,3%–16%)</b> jika dibatasi system prompt ketat dan penempelan sitasi [Doc, p.X].</td>
+            <td><b>Tinggi;</b> LLM yang di-fine-tune tetap cenderung membuat jawaban yang terdengar benar padahal salah.</td>
+            <td><b>Nol (0%)</b> pada kueri terdaftar, namun gagal total (100% error) pada kueri di luar skrip.</td>
+          </tr>
+          <tr>
+            <th>Kebutuhan Komputasi &amp; Biaya</th>
+            <td><b>Sedang</b> (inference LLM API atau lokal + Vector DB Qdrant/FAISS).</td>
+            <td><b>Tinggi</b> saat proses pelatihan (GPU Training Cost); biaya inference relatif stabil tergantung ukuran parameter.</td>
+            <td><b>Sangat Rendah;</b> dapat dijalankan pada server spesifikasi rendah tanpa GPU.</td>
+          </tr>
+          <tr>
+            <th>Kompleksitas Implementasi</th>
+            <td><b>Sedang–Tinggi</b> (memerlukan chunking, embedding, retrieval, reranking, &amp; prompting).</td>
+            <td><b>Tinggi</b> (pra-pemrosesan dataset instruksi besar, manipulasi hyperparameter, &amp; evaluasi kelayakan).</td>
+            <td><b>Rendah di awal,</b> namun maintenance bertambah berat seiring bertambahnya aturan.</td>
+          </tr>
+          <tr>
+            <th>Kemudahan Evaluasi</th>
+            <td><b>Sangat Terstruktur</b> (dapat dievaluasi terpisah via metrik IR &amp; RAGAS).</td>
+            <td><b>Cukup Sulit;</b> memerlukan human evaluation atau metrik kecocokan teks (BLEU/ROUGE) yang kurang sensitif fakta.</td>
+            <td><b>Mudah</b> (cukup mengukur Intent Classification Accuracy dan Confusion Matrix).</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="subhead">Rekomendasi Awal Berdasarkan Bukti</div>
+    <ol class="steps">
+      <li>
+        <h4>Jangan Menerapkan Intent-Based / Rasa Murni</h4>
+        Wilianto et al. membuktikan secara empiris bahwa RAG mengungguli sistem intent-matching/rule-based sebesar 18% pada akurasi (91% vs 73%) dan 0,17 pada F1-score. Chatbot rule-based akan sangat menyulitkan helpdesk UIN Walisongo karena variasi pertanyaan mahasiswa sangat beragam.
+      </li>
+      <li>
+        <h4>Jangan Menerapkan Fine-Tuning Murni Tanpa Retrieval</h4>
+        Melatih LLM murni tanpa basis RAG sangat berisiko untuk helpdesk kampus, karena informasi kebijakan UKT/SOP sering berubah. Fine-Tuning hanya mengubah cara model berbicara (style/register), bukan ingatan faktual yang dapat diperbarui secara dinamis.
+      </li>
+      <li>
+        <h4>Pendekatan Terbaik yang Direkomendasikan untuk Skripsi</h4>
+        <ul>
+          <li><b>Opsi A — RAG Hybrid dengan Dense + Sparse Retrieval:</b> RAG sebagai metode utama dengan menambahkan BM25 (Sparse Search) dan Re-ranking untuk menekan Retrieval Error (pemicu 60% kesalahan pada Yafie et al.).</li>
+          <li><b>Opsi B — Penelitian Komparatif RAG vs Fine-Tuning vs Hybrid (RAG + Fine-Tuning):</b> kontribusi skripsi paling kuat; menguji ketiga arsitektur secara empiris pada dataset helpdesk UIN Walisongo Semarang.</li>
+        </ul>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ============ KESIMPULAN ============ -->
+  <section class="aspect" id="kesimpulan">
+    <div class="aspect-head"><span class="num">10</span><h2>Kesimpulan Analitis &amp; Sintesis Akhir</h2><span class="rule"></span></div>
+    <ol class="steps">
+      <li>
+        <h4>Kandidat Research Gap Paling Menjanjikan</h4>
+        Fokus kontribusi ilmiah yang paling kuat untuk skripsi Helpdesk UIN Walisongo Semarang:
+        <ul>
+          <li><b>Pengujian Komparatif Empiris RAG vs Fine-Tuning LLM vs Hybrid (RAG + Fine-Tuning):</b> mengisi ketiadaan perbandingan head-to-head pada literatur helpdesk kampus berbahasa Indonesia.</li>
+          <li><b>Hybrid Search (BM25 + Dense) &amp; Agentic Multi-step Retrieval:</b> solusi langsung untuk retrieval error (60% kesalahan) dan anjloknya Context Recall (0,5926) pada kueri reasoning/prosedural.</li>
+          <li><b>Agentic Fallback &amp; Live Ticketing Routing:</b> integrasi chatbot dengan pembuatan ticket helpdesk otomatis saat bot tidak mampu menjawab (mencegah pesan penolakan statis).</li>
+        </ul>
+      </li>
+      <li>
+        <h4>Relevansi dengan Data Historis Helpdesk UIN Walisongo</h4>
+        Log percakapan historis paling tepat difungsikan sebagai:
+        <ul>
+          <li><b>Bahan Analisis Kebutuhan &amp; Intent Mapping:</b> mengidentifikasi kategori dan templat pertanyaan riil mahasiswa (seperti metodologi Wilianto et al.).</li>
+          <li><b>Dataset Pengujian Kuantitatif (Ground-Truth Test Set):</b> menyusun 100–200 pertanyaan uji realistis (Faktual, Reasoning, Out-of-Context).</li>
+          <li><b>Dataset Instruksi Fine-Tuning (jika memilih Opsi Komparatif):</b> dikurasi ketat menjadi pasangan Q&amp;A untuk melatih gaya bahasa LLM lokal.</li>
+        </ul>
+        <div class="callout info" style="margin:14px 0 0">Dokumen SOP dan Peraturan Resmi UIN Walisongo yang berlaku saat ini harus tetap menjadi <b>Knowledge Base utama RAG</b> guna menjamin faktualitas jawaban.</div>
+      </li>
+      <li>
+        <h4>Informasi Tambahan yang Masih Perlu Dicari Sebelum Menetapkan Metode</h4>
+        <ul>
+          <li><b>Ketersediaan &amp; Aksesibilitas Data SOP UIN Walisongo:</b> apakah dokumen SOP helpdesk, panduan UKT, dan regulasi akademik sudah lengkap dalam bentuk PDF/DOCX yang dapat di-ingest?</li>
+          <li><b>Karakteristik &amp; Format Log Chat Historis:</b> berapa jumlah baris/percakapan log historis yang tersedia, dan seberapa tinggi noise serta data pribadi di dalamnya?</li>
+          <li><b>Kapasitas Infrastruktur Komputasi:</b> apakah tersedia server/GPU lokal (untuk LLM lokal/Fine-Tuning) atau akan mengandalkan API terdistribusi (OpenAI/Gemini/Groq)?</li>
+          <li><b>Studi Literatur Pembanding Tambahan:</b> penelusuran paper yang secara eksplisit membandingkan RAG vs Fine-Tuning pada kasus Customer Support/Helpdesk untuk memperkuat Bab 2 Landasan Teori.</li>
+        </ul>
+      </li>
+    </ol>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    Sumber: <b>GAP_ANALYZE.md</b> — analisis gap 3 paper chatbot akademik berbasis Retrieval-Augmented Generation.
+  </div>
+</footer>
+
+</body>
+</html>
